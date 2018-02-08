@@ -1,2 +1,2 @@
 # CS1550
-Spring2017@Pitt
+Spring2018@Pitt

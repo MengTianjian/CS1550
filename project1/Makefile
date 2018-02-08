@@ -1,17 +1,11 @@
-#!/usr/bin/make
-# Graphics Library Makefile
-# (c) Mohammad H. Mofrad, 2017
+default: driver
 
-LIB = library
-MAIN = square
-GCC = gcc
-
-install:
-	$(GCC) -o $(LIB).o -c $(LIB).c
-	$(GCC) -o $(MAIN).o -c $(MAIN).c
-	$(GCC) -o $(MAIN) $(MAIN).o $(LIB).o
+driver:
+	gcc -o library.o -c library.c
+	gcc -o driver.o -c driver.c
+	gcc -o driver driver.o library.o
 
 clean:
-	rm -f $(LIB).o
-	rm -f $(MAIN).o
-	rm -f $(MAIN)
+	-rm -f library.o
+	-rm -f driver.o
+	-rm -f driver
