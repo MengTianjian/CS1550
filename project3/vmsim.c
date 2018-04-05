@@ -103,8 +103,8 @@ int main(int argc, char *argv[]) {
 }
 
 void read_access(int i, unsigned int addr, unsigned char mode) {
-    accessArray[i].index = addr & 0xfff;
-    accessArray[i].offset = addr >> 12;
+    accessArray[i].offset = addr & 0xfff;
+    accessArray[i].index = addr >> 12;
     accessArray[i].mode = mode;
 }
 
@@ -170,6 +170,7 @@ void access_frame() {
             if (frameArray[j].valid) {
                 if (frameArray[j].index == index) {
                     hits++;
+                    //printf("%x\t Hit\n", index);
                     if (mode == 'W') {
                         frameArray[j].dirty = 1;
                     }
@@ -180,7 +181,7 @@ void access_frame() {
                         frameArray[j].referenced = 1;
                     }
                     if (algorithm == AGING) {
-                        frameArray[j].referenced &= 0x80;
+                        frameArray[j].referenced |= 0x80;
                     }
                     empty = 0;
                     break;
@@ -211,6 +212,7 @@ void access_frame() {
         }
         else if (empty == -1) {
             faults++;
+            //printf("%x\t Miss\n", index);
             switch (algorithm) {
                 case OPT:
                     my_opt(i, index, mode);
@@ -313,46 +315,53 @@ void my_aging(unsigned int index, unsigned char mode) {
 void my_wsclock(int cur, unsigned int index, unsigned char mode) {
     int i = clocks;
     int min = totalAccess;
-    int j = -1;
+    int j, k;
     while (1) {
         if (!frameArray[i].referenced) {
-            if (cur-frameArray[i].tim > tau && !frameArray[i].dirty) {
-                frameArray[i].index = index;
-                frameArray[i].referenced = 1;
-                if (mode == 'R') {
+            if (cur-frameArray[i].tim > tau) {
+                if (frameArray[i].dirty) {
+                    writes++;
                     frameArray[i].dirty = 0;
                 }
-                else if (mode == 'W') {
-                    frameArray[i].dirty = 1;
+                else {
+                    frameArray[i].index = index;
+                    frameArray[i].referenced = 1;
+                    //frameArray[i].tim = cur;
+                    if (mode == 'R') {
+                        frameArray[i].dirty = 0;
+                    }
+                    else if (mode == 'W') {
+                        frameArray[i].dirty = 1;
+                    }
+                    break;
                 }
-                break;
-            }
-            if (frameArray[i].dirty) {
-                writes++;
-                frameArray[i].dirty = 0;
             }
         }
         else {
             frameArray[i].tim = cur;
             frameArray[i].referenced = 0;
         }
-        if (frameArray[i].tim < min) {
-            min = frameArray[i].tim;
-            j = i;
-        }
         i = (i+1)%numframes;
         if (i == clocks) {
-            frameArray[j].index = index;
-            frameArray[j].referenced = 1;
-            if (frameArray[i].dirty) {
+            for (j = 0; j < numframes; j++) {
+                if (frameArray[(i+j)%numframes].tim < min) {
+                    min = frameArray[(i+j)%numframes].tim;
+                    k = (i+j)%numframes;
+                }
+            }
+            frameArray[k].index = index;
+            frameArray[k].referenced = 1;
+            //frameArray[k].tim = cur;
+            if (frameArray[k].dirty) {
                 writes++;
             }
             if (mode == 'R') {
-                frameArray[j].dirty = 0;
+                frameArray[k].dirty = 0;
             }
             else if (mode == 'W') {
-                frameArray[j].dirty = 1;
+                frameArray[k].dirty = 1;
             }
+            i--;
             break;
         }
     }
